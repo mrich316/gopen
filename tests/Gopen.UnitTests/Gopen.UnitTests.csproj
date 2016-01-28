@@ -37,6 +37,7 @@
     <Compile Include="GopenConventions.cs" />
     <Compile Include="GopenCustomization.cs" />
     <Compile Include="MultipartJsonMediaTypeFormatterTests.cs" />
+    <Compile Include="MediaTypeFormatterSpecimenBuilder.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

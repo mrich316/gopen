@@ -1,6 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
+using System.Net.Http;
+using System.Net.Http.Formatting;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace Gopen.UnitTests
@@ -70,8 +74,32 @@ namespace Gopen.UnitTests
 
             foreach (var t in types)
             {
-                Assert.False(sut.CanWriteType(t), string.Format("CanWriteType must support {0}", t.FullName));
+                Assert.False(sut.CanWriteType(t), string.Format("CanWriteType supports {0}, but should not have.", t.FullName));
             }
+        }
+
+        [Theory, GopenConventions]
+        public async Task ReadFromStreamAsync_ContentNotMultipartFormData_ThrowsInvalidOperationException(
+            MultipartJsonMediaTypeFormatter sut,
+            ObjectContent<string> content, 
+            IFormatterLogger formatterLogger)
+        {
+            Assert.False(content.IsMimeMultipartContent());
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                sut.ReadFromStreamAsync(content.ObjectType, null, content, formatterLogger));
+        }
+
+        [Theory, GopenConventions]
+        public async Task ReadFromStreamAsync_NullContent_ReturnsDefault(
+            MultipartJsonMediaTypeFormatter sut,
+            Type type,
+            IFormatterLogger formatterLogger)
+        {
+            var actual = await sut.ReadFromStreamAsync(type, null, null, formatterLogger);
+            var expected = MediaTypeFormatter.GetDefaultValueForType(type);
+
+            Assert.Equal(expected, actual);
         }
     }
 }

@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Formatting;
@@ -51,11 +50,39 @@ namespace Gopen.UnitTests
         }
 
         [Theory, GopenConventions]
-        public void CanReadType_Any_ReturnsTrue(MultipartJsonMediaTypeFormatter sut)
+        public void CanReadType_JsonPrimitiveContract_ReturnsFalse(MultipartJsonMediaTypeFormatter sut)
         {
             var types = new[]
             {
-                typeof(bool), typeof(int), typeof(Nullable<>), typeof(Dictionary<,>), typeof(List<>), typeof(object)
+                typeof(bool), typeof(string), typeof(int), typeof(long), typeof(int?), typeof(DateTime)
+            };
+
+            foreach (var t in types)
+            {
+                Assert.False(sut.CanReadType(t), string.Format("CanReadType must not support {0}", t.FullName));
+            }
+        }
+
+        [Theory, GopenConventions]
+        public void CanReadType_JsonObjectContract_ReturnsTrue(MultipartJsonMediaTypeFormatter sut)
+        {
+            var types = new[]
+            {
+                typeof(TestModel)
+            };
+
+            foreach (var t in types)
+            {
+                Assert.True(sut.CanReadType(t), string.Format("CanReadType must support {0}", t.FullName));
+            }
+        }
+
+        [Theory, GopenConventions]
+        public void CanReadType_JsonDictionaryContract_ReturnsTrue(MultipartJsonMediaTypeFormatter sut)
+        {
+            var types = new[]
+            {
+                typeof(Dictionary<string,TestModel>), typeof(Dictionary<int,TestModel>)
             };
 
             foreach (var t in types)
@@ -81,7 +108,7 @@ namespace Gopen.UnitTests
         [Theory, GopenConventions]
         public async Task ReadFromStreamAsync_ContentNotMultipartFormData_ThrowsInvalidOperationException(
             MultipartJsonMediaTypeFormatter sut,
-            ObjectContent<string> content, 
+            ObjectContent<string> content,
             IFormatterLogger formatterLogger)
         {
             Assert.False(content.IsMimeMultipartContent());
@@ -100,6 +127,21 @@ namespace Gopen.UnitTests
             var expected = MediaTypeFormatter.GetDefaultValueForType(type);
 
             Assert.Equal(expected, actual);
+        }
+
+        [Theory, GopenConventions]
+        public async Task ReadFromStreamAsync_NotJsonObjectContent_Throws(
+            MultipartJsonMediaTypeFormatter sut,
+            MultipartFormDataContent content,
+            ObjectContent<string> stringContent,
+            IFormatterLogger formatterLogger)
+        {
+            content.Add(stringContent, "StringValue");
+            // HACK: ContentLength set just to bypass sanity checks in ReadFromStreamAsync.
+            content.Headers.ContentLength = 1;
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                sut.ReadFromStreamAsync(typeof(string), null, content, formatterLogger));
         }
     }
 }

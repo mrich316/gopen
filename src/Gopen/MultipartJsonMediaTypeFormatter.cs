@@ -11,15 +11,15 @@ namespace Gopen
 {
     /// <summary>
     /// Formatter binding a model from a multipart/form-data request. Each text part is mapped
-    /// to its corresponding action parameter property using a JSON.NET to read each part.
+    /// to its corresponding action parameter property using JSON.NET to read each part.
     /// </summary>
     public class MultipartJsonMediaTypeFormatter : MediaTypeFormatter
     {
         private const string SupportedMediaType = "multipart/form-data";
 
-        private readonly DefaultContractResolver _contractResolver;
+        private readonly IContractResolver _contractResolver;
 
-        public MultipartJsonMediaTypeFormatter(DefaultContractResolver contractResolver)
+        public MultipartJsonMediaTypeFormatter(IContractResolver contractResolver)
         {
             if (contractResolver == null) throw new ArgumentNullException("contractResolver");
             _contractResolver = contractResolver;
@@ -32,7 +32,11 @@ namespace Gopen
 
         public override bool CanReadType(Type type)
         {
-            return true;
+            var contract = _contractResolver.ResolveContract(type);
+
+            // Only json objects/dictionaries are supported.
+            return (contract as JsonObjectContract) != null
+                   || (contract as JsonDictionaryContract) != null;
         }
 
         /// <summary>
@@ -68,7 +72,45 @@ namespace Gopen
                     SupportedMediaType));
             }
 
+            var contract = _contractResolver.ResolveContract(type);
+
+            var jsonObjectContract = contract as JsonObjectContract;
+            if (jsonObjectContract != null)
+            {
+                return ReadObjectContractFromStreamAsync(jsonObjectContract, type, readStream, content, formatterLogger);
+            }
+
+            var jsonDictionaryContract = contract as JsonDictionaryContract;
+            if (jsonDictionaryContract != null)
+            {
+                return ReadDictionaryContractFromStreamAsync(jsonDictionaryContract, type, readStream, content, formatterLogger);
+            }
+
+            throw new InvalidOperationException(string.Format(
+                "{0} is not a supported contract.",
+                contract.GetType().Name));
+
+        }
+
+        private Task<object> ReadObjectContractFromStreamAsync(
+            JsonObjectContract contract,
+            Type type,
+            Stream readStream,
+            HttpContent content,
+            IFormatterLogger formatterLogger)
+        {
             throw new NotImplementedException();
         }
+
+        private Task<object> ReadDictionaryContractFromStreamAsync(
+            JsonDictionaryContract contract,
+            Type type,
+            Stream readStream,
+            HttpContent content,
+            IFormatterLogger formatterLogger)
+        {
+            throw new NotImplementedException();
+        }
+
     }
 }
